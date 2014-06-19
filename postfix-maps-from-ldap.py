@@ -90,6 +90,10 @@ reloadpostfix = /usr/bin/newaliases; sleep 1; /usr/sbin/postfix reload
 aliasfile = /etc/aliases.ldap
 passwdfile = /etc/passwd
 shadowfile = /etc/shadow
+
+# list of primary gids (not group names) we want to include.. use 'any' for any primary group
+primarygids = 200 300 400
+
 # list of unix logins to be excluded from the lookup.
 nonldapusers  = user1 user2 user3
 
@@ -131,8 +135,16 @@ if settings.has_option('config','nonldapusers'):
 else:
    nonldapusers = []
 
-if settings.has_option('config','forcewrite'):
-   force_write = settings.getboolean(thesection,'force_write')
+# get the primary gids we care about. this is compulsory
+# so exit if we dont have it
+if settings.has_option('config','primarygids'):
+   primarygids = settings.get('config','primarygids').split()
+else:
+   print "[config] section doesnt have primarygids, we need this to know which logins to process"
+   sys.exit(1)
+
+if settings.has_option('config','force_write'):
+   force_write = settings.getboolean('config','force_write')
 else:
    force_write = False;
 
@@ -160,14 +172,14 @@ for line in fileinput.input(settings.get('config','shadowfile')):
 
 #
 # read user names from /etc/passwd in passwd format
-# dont include those not in pronto group (200) or 
+# dont include those not in  primary groups we care about
 # those that are locked (determined from shadow), convert to lower case..
 #
 names = {}
 for line in fileinput.input(settings.get('config','passwdfile')):
    passwdline = line.strip().split(":")
-   # only care if in pronto group or not locked, or the ones not in the ignore list
-   if passwdline[3] == '200' and not passwdline[0] in lockedlogins and not passwdline[0] in nonldapusers:
+   # only care if in gidlist or not locked, or the ones not in the ignore list
+   if (passwdline[3] in primarygids or primarygids == ['any']) and not passwdline[0] in lockedlogins and not passwdline[0] in nonldapusers:
       names[passwdline[4].lower()] = passwdline[0]
 
 notreconciledyet = names
