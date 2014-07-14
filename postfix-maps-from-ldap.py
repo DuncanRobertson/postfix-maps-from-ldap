@@ -58,8 +58,12 @@ def getemail(name,l,base):
 def reconcileagainstldap(serverurl,usernname,password,base,names):
    unreconciled = {}
    global reconciledemails
-   l = ldap.initialize(serverurl)
-   bind = l.simple_bind_s(usernname,password)
+   try:
+      l = ldap.initialize(serverurl)
+      bind = l.simple_bind_s(usernname,password)
+   except Exception, e:
+      print "Error connecting to LDAP server: %s - %s" % (serverurl,e)
+      sys.exit(1)
 
    for name in names:
       email = getemail(name,l,base)
